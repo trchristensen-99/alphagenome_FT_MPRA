@@ -181,6 +181,9 @@ def _flat_metrics_to_rows(model: str, cell: str, seed, tm: dict) -> list[dict]:
       snv        ← snv_delta    (the skew / SNV-effect metric)
     """
     out = []
+    # snv_abs has two schema variants in the wild:
+    #   - "snv_abs_alt"  : our new test_episomal_mpra.py key (alt-allele Pearson r)
+    #   - "snv_abs"      : the Malinois training script's already-computed key
     sources = {
         "reference": tm.get("in_dist") or tm.get("in_distribution") or {},
         "designed":  tm.get("ood") or {},
