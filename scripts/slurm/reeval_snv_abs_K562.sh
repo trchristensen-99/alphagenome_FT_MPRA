@@ -72,7 +72,9 @@ mkdir -p "$OUT_DIR"
 
 echo "[task $SLURM_ARRAY_TASK_ID] $MODEL_TYPE seed=$SEED ckpt=$CKPT"
 
-uv run --no-sync python -u scripts/test_episomal_mpra.py \
+# Use ALBench venv's python directly (uv run defaults to this repo's
+# pyproject.toml which doesn't have the AG/Enformer deps).
+python -u scripts/test_episomal_mpra.py \
     --model_type $MODEL_TYPE \
     --checkpoint_path "$CKPT" \
     --cell_type $CELL \
