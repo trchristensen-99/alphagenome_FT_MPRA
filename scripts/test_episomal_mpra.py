@@ -240,14 +240,33 @@ def _run_predict(predict_fn, test_sets):
             ref_preds = predict_fn(payload["ref_sequences"])
             alt_preds = predict_fn(payload["alt_sequences"])
             pred_delta = alt_preds - ref_preds
+            # The skew (= alt − ref) metric — historical "snv_delta" column.
             metrics = _metrics(pred_delta, payload["true_delta"])
+            # Absolute alt-allele performance — new "snv_abs" column for the
+            # bar plot (3rd column in the genomic / designed / snv-abs /
+            # snv-effect order Alan asked for). When the absolute labels are
+            # available in the test set, also report them; otherwise skip.
+            snv_abs_alt = None
+            snv_abs_ref = None
+            if "alt_labels" in payload:
+                snv_abs_alt = _metrics(alt_preds, payload["alt_labels"])
+            if "ref_labels" in payload:
+                snv_abs_ref = _metrics(ref_preds, payload["ref_labels"])
             results[name] = {
                 "metrics": metrics,
+                "snv_abs_alt": snv_abs_alt,
+                "snv_abs_ref": snv_abs_ref,
                 "predictions": {
                     "ref_pred": ref_preds.tolist(),
                     "alt_pred": alt_preds.tolist(),
                     "pred_delta": pred_delta.tolist(),
                     "true_delta": payload["true_delta"].tolist(),
+                    "ref_labels": payload.get("ref_labels", []).tolist()
+                    if hasattr(payload.get("ref_labels", []), "tolist")
+                    else [],
+                    "alt_labels": payload.get("alt_labels", []).tolist()
+                    if hasattr(payload.get("alt_labels", []), "tolist")
+                    else [],
                 },
             }
         else:
@@ -342,11 +361,22 @@ def main():
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
     metrics_path = out / f"{run_name}_{args.cell_type}_metrics.json"
+    # The SNV entry has the historical "snv_delta" metric (= skew). We also
+    # expose the new "snv_abs_alt" / "snv_abs_ref" metrics (absolute alt /
+    # absolute ref Pearson r) when the test set provides per-allele labels.
+    test_set_metrics = {}
+    for k, v in results.items():
+        test_set_metrics[k] = v["metrics"]
+        if k == "snv":
+            if v.get("snv_abs_alt"):
+                test_set_metrics["snv_abs_alt"] = v["snv_abs_alt"]
+            if v.get("snv_abs_ref"):
+                test_set_metrics["snv_abs_ref"] = v["snv_abs_ref"]
     metrics_summary = {
         "model_type": args.model_type,
         "cell_type": args.cell_type,
         "checkpoint_path": str(args.checkpoint_path),
-        "test_sets": {k: v["metrics"] for k, v in results.items()},
+        "test_sets": test_set_metrics,
     }
     metrics_path.write_text(json.dumps(metrics_summary, indent=2))
     print(f"\n✓ Saved metrics to {metrics_path}")

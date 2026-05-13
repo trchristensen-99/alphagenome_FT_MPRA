@@ -74,10 +74,11 @@ MODEL_ORDER_CELL_AVG = [
 
 CELL_ORDER = ["K562", "HepG2", "SKNSH"]
 CELL_LABELS = {"K562": "K562", "HepG2": "HepG2", "SKNSH": "SK-N-SH"}
-TEST_SET_ORDER = ["reference", "designed", "snv"]
+TEST_SET_ORDER = ["reference", "designed", "snv_abs", "snv"]
 TEST_SET_LABELS = {
     "reference": "Genomic Reference",
     "designed": "High-Activity Designed",
+    "snv_abs": "SNV (Alt Allele)",
     "snv": "SNV Effects (Δ Pearson)",
 }
 
@@ -171,20 +172,28 @@ BAR_FINAL_RESULT_FILES = ("result.json", "test_metrics.json")
 
 
 def _flat_metrics_to_rows(model: str, cell: str, seed, tm: dict) -> list[dict]:
-    """Map the four expected metric keys onto the plot's three test sets."""
+    """Map metric keys onto the plot's four test sets.
+
+    Schema mapping (test_set → tm key):
+      reference  ← in_dist / in_distribution
+      designed   ← ood
+      snv_abs    ← snv_abs_alt  (NEW; absolute alt-allele Pearson r)
+      snv        ← snv_delta    (the skew / SNV-effect metric)
+    """
     out = []
     sources = {
         "reference": tm.get("in_dist") or tm.get("in_distribution") or {},
         "designed":  tm.get("ood") or {},
+        "snv_abs":   tm.get("snv_abs_alt") or tm.get("snv_abs") or {},
         "snv":       tm.get("snv_delta") or {},
     }
     for ts, m in sources.items():
-        val = m.get("pearson_r")
+        val = m.get("pearson_r") or m.get("pearson")
         if val is None or (isinstance(val, float) and np.isnan(val)):
             continue
         out.append({"model": model, "cell_type": cell, "test_set": ts,
                     "pearson_r": float(val),
-                    "n_samples": int(m.get("n", 0)) or 0,
+                    "n_samples": int(m.get("n_samples", m.get("n", 0))) or 0,
                     "seed": seed})
     return out
 
@@ -294,13 +303,14 @@ def plot_panel(ax, df: pd.DataFrame, test_set: str, ylim: tuple[float, float]):
     ax.grid(axis="y", alpha=0.4, linestyle="--")
 
 
-def plot_episomal_benchmark(df: pd.DataFrame, figsize=(18, 5)):
+def plot_episomal_benchmark(df: pd.DataFrame, figsize=(22, 5)):
     setup_plot_style()
     fig, axes = plt.subplots(1, len(TEST_SET_ORDER), figsize=figsize)
 
     panel_ylim = {
         "reference": (0.5, 1.0),
         "designed": (0.0, 0.9),
+        "snv_abs": (0.5, 1.0),
         "snv": (0.0, 0.7),
     }
 

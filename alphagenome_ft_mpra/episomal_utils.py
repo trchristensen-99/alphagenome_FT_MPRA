@@ -209,6 +209,11 @@ def get_episomal_test_sets(
                 "ref_sequences": snv_df["sequence_ref"].str[:SEQUENCE_LENGTH].tolist(),
                 "alt_sequences": snv_df["sequence_alt"].str[:SEQUENCE_LENGTH].tolist(),
                 "true_delta": (snv_df[alt_col] - snv_df[ref_col]).values.astype(np.float32),
+                # Absolute labels needed for the SNV-absolute / alt-allele
+                # bar (column 3 in the bar plot). The previous schema only
+                # exposed the delta, blocking that comparison.
+                "ref_labels": snv_df[ref_col].values.astype(np.float32),
+                "alt_labels": snv_df[alt_col].values.astype(np.float32),
             }
 
     return test_sets
