@@ -325,12 +325,12 @@ def plot_episomal_benchmark(df: pd.DataFrame, figsize=(18, 5)):
 # Drops MPRALegNet by default because it shares a color with Malinois in the
 # repo's palette.
 
-CELL_AVG_GROUP_KEYS = ["reference", "designed", "snv_abs", "snv"]
+CELL_AVG_GROUP_KEYS = ["reference", "snv_abs", "snv", "designed"]
 CELL_AVG_GROUP_LABELS = [
     "Genomic Reference\nSequences",
-    "High-Activity\nDesigned Sequences",
     "Genomic Alternate\nSequences (SNVs)",
     "SNV Effects\n(Ref − Alt)",
+    "High-Activity\nDesigned Sequences",
 ]
 
 def _weighted_stats(values: np.ndarray, weights: np.ndarray) -> tuple[float, float]:
